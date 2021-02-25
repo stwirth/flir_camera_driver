@@ -16,33 +16,36 @@ generate_dynamic_reconfigure_options(
 )
 
 catkin_package(CATKIN_DEPENDS
-  image_exposure_msgs nodelet roscpp sensor_msgs wfov_camera_msgs
+  image_exposure_msgs nodelet roscpp sensor_msgs wfov_camera_msgs dynamic_reconfigure
 )
 
 
-# If Spinnacker is already present, use the found version. If not, download it.
+# If Spinnaker is already present, use the found version. If not, download it.
 # We can't resolve this dependency using the usual rosdep means because
 # the Point Grey EULA prohibits redistributing the headers or the packages which
 # contains them. We work around this by downloading the archive directly from
 # their website during this step in the build process.
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake/modules")
-find_package(Spinnaker QUIET)
-if(NOT Spinnaker_FOUND)
-  message(STATUS "libSpinnaker not found in system library path")
+#find_package(Spinnaker QUIET)
+#if(Spinnaker_FOUND) # TODO reverse
+  message(STATUS "libSpinnaker not found in system library path. Attempting download.")
   include(cmake/DownloadSpinnaker.cmake)
-  download_spinnaker(Spinnaker_LIBRARIES Spinnaker_INCLUDE_DIRS)
-endif()
+  download_spinnaker(Spinnaker_SDK_ROOT)
+  message(STATUS "Spinnaker SDK download directory: ${Spinnaker_SDK_ROOT}")
+  find_package(Spinnaker REQUIRED)
+  #endif()
 
 message(STATUS "libSpinnaker library: ${Spinnaker_LIBRARIES}")
-message(STATUS "libSpinnaker include: ${Spinnaker_INCLUDE_DIRS}")
+message(STATUS "libSpinnaker include: ${Spinnaker_INCLUDE_DIR}")
 
 
 include_directories(SYSTEM
-                    ${Spinnaker_INCLUDE_DIRS}
+                    ${Spinnaker_INCLUDE_DIR}
                     ${catkin_INCLUDE_DIRS})
 include_directories(include)
 
 add_library(SpinnakerCameraLib src/SpinnakerCamera.cpp)
+add_dependencies(SpinnakerCameraLib spinnaker-sdk)
 
 # Include the Spinnaker Libs
 target_link_libraries(SpinnakerCameraLib
@@ -68,6 +71,7 @@ add_dependencies(SpinnakerCameraLib ${PROJECT_NAME}_gencfg)
 add_library(Camera src/camera.cpp)
 target_link_libraries(Camera ${catkin_LIBRARIES})
 add_dependencies(Camera ${PROJECT_NAME}_gencfg)
+add_dependencies(Camera spinnaker-sdk)
 
 add_library(Cm3 src/cm3.cpp)
 target_link_libraries(Cm3 Camera ${catkin_LIBRARIES})
